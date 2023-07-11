@@ -48,7 +48,7 @@ def thread_monitor_and_config(event_object):
 
 def main():
     Thread(target=thread_manage_connection, args=(event,)).start()
-    Thread(target=thread_monitor_and_config, args=(event,)).start()
+    #Thread(target=thread_monitor_and_config, args=(event,)).start()
 
 
 if __name__ == "__main__":

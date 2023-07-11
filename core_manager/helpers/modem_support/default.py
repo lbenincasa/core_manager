@@ -176,7 +176,8 @@ class BaseModule:
         else:
             raise NetworkRegFailed("Error occured sending AT+CREG?: ", output)
 
-    def initiate_ecm(self, connection_delay=10):
+#    def initiate_ecm(self, connection_delay=10):
+    def initiate_ecm(self, connection_delay=2):
         logger.info("Checking the ECM initialization...")
         output = send_at_com(self.pdp_status_command, "OK")
         if output[2] == 0:

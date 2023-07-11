@@ -24,17 +24,17 @@ configs_showed_at_frontend = [
 ]
 
 default_config = {
-    "apn": core_env.get("apn", "super"),
+    "apn": core_env.get("apn", "iliad"),
     "sbc": core_env.get("board", "RaspberryPi4"),
     "debug_mode": False,
     "verbose_mode": False,
-    "check_internet_interval": 60,
-    "send_monitoring_data_interval": 25,
+    "check_internet_interval": 5,
+    "send_monitoring_data_interval": 5,
     "ping_timeout": 9,
     "other_ping_timeout": 3,
     "network_priority": {"eth0": 1, "wlan0": 2, "wwan0": 3, "usb0": 4},
     "cellular_interfaces": ["wwan0", "usb0"],
-    "acceptable_apns": ["super", "de1.super", "sg1.super"],
+    "acceptable_apns": ["iliad", "de1.super", "sg1.super"],
     "logger_level": "info",
     "network_interface_exceptions": [],
 }
