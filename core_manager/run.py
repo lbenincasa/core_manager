@@ -36,6 +36,7 @@ def thread_monitor_and_config(event_object):
     while True:
         with lock:
             logger.debug("Configurator is working...")
+
             configure()
             logger.debug("Network manager is working...")
             network = manage_network(modem)

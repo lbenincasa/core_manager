@@ -14,7 +14,8 @@ queue = Queue()
 modem = BaseModule()
 
 NO_WAIT_INTERVAL = 0.1
-SECOND_CHECK_INTERVAL = 10
+#SECOND_CHECK_INTERVAL = 10
+SECOND_CHECK_INTERVAL = 2
 
 first_connection_flag = False
 soft_reboot_count = 0

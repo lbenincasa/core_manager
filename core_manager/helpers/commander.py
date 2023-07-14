@@ -2,7 +2,9 @@
 
 import subprocess
 from helpers.logger import logger
+from .utils import decide_port
 
+detected = decide_port()
 
 def shell_command(command):
     try:
@@ -20,8 +22,9 @@ def shell_command(command):
 def send_at_com(command, desired):
     try:
         cp = subprocess.run(
-#            ["atcom", "--port /dev/ttyUSB2", command, "--find", desired],
-            ["atcom", command, "--find", desired],
+            ["atcom", "--port /dev/ttyUSB2", command, "--find", desired],
+#            ["atcom", command, "--find", desired],
+#            ["atcom", "--port " + detected[0], command, "--find", desired],
             universal_newlines=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -43,3 +46,4 @@ def parse_output(output, header, end):
     end_of_data = index_of_data + output[0][index_of_data:].find(end)
     sig_data = output[0][index_of_data:end_of_data]
     return sig_data
+
