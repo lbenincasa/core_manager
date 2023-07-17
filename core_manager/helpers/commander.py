@@ -22,8 +22,8 @@ def shell_command(command):
 def send_at_com(command, desired):
     try:
         cp = subprocess.run(
-            ["atcom", "--port /dev/ttyUSB2", command, "--find", desired],
-#            ["atcom", command, "--find", desired],
+#            ["atcom", "--port /dev/ttyUSB2", command, "--find", desired],
+            ["atcom", command, "--find", desired],
 #            ["atcom", "--port " + detected[0], command, "--find", desired],
             universal_newlines=True,
             stdout=subprocess.PIPE,
