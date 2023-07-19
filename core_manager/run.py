@@ -14,6 +14,7 @@ from geolocation import update_geolocation
 
 #from modules.imu import sensor
 import modules.imu as imu
+import modules.remote_gpio as rgpio
 import paho.mqtt.client as mqtt
 import time
 import struct
@@ -32,9 +33,9 @@ latency2 = 0.0
 #MQTT_BROKER = "172.30.55.106"
 #OLD MQTT_BROKER = "172.30.45.93"
 #MQTT_BROKER = "broker.emqx.io"
-#MQTT_BROKER = "192.168.100.100"
+MQTT_BROKER = "192.168.100.100"
 ## oracle-03
-MQTT_BROKER = "130.162.34.184"
+#MQTT_BROKER = "130.162.34.184"
 
 MQTT_PING = "rw/host/ping"
 MQTT_PONG = "rw/host/pong"
@@ -48,6 +49,7 @@ def on_connect(client, userdata, flags, rc):
     #client.subscribe(MQTT_CMD)
     client.subscribe(MQTT_PING)
     client.subscribe(MQTT_PONG)
+    rgpio.onConnect(client, userdata, flags, rc)
 
 
 # The callback for when a PUBLISH message is received from the server.
@@ -61,6 +63,10 @@ def on_message(client, userdata, msg):
     if msg.topic == MQTT_PING:
        #_t = struct.unpack('>f',msg.payload)[0]
        latency2 = time.time() - float(msg.payload)
+    
+    rgpio.onMessage(client, userdata, msg)
+
+
 
 
 def thread_manage_connection(event_object):
@@ -101,6 +107,7 @@ def thread_monitor(event_object):
         #imu.printSensors()
         #print(f"Quaternion: {imu.getSensors().quaternion}")
         imu.publishSensors(client)
+        rgpio.publishData(client)
         pass
 
       time.sleep(0.5)
