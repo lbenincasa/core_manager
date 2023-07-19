@@ -19,6 +19,7 @@ SECOND_CHECK_INTERVAL = 2
 
 first_connection_flag = False
 soft_reboot_count = 0
+check_internet_cnt = 0
 
 logger.info("Core Manager started.")
 
@@ -64,6 +65,7 @@ def _identify_modem():
     else:
         modem = module
         queue.is_ok = True
+        logger.info(" identified modem: %s", modem.module_name)
 
 
 def _identify_setup():
@@ -188,6 +190,7 @@ def _initiate_ecm():
 def _check_internet():
     global first_connection_flag
     global soft_reboot_count
+    global check_internet_cnt
 
     if queue.sub == "check_internet_base":
         queue.set_step(
@@ -228,10 +231,12 @@ def _check_internet():
     else:
 
         # reset soft_reboot_count
-        soft_reboot_count = 0
+        soft_reboot_count  = 0
+        check_internet_cnt += 1
 
-        if not first_connection_flag:
+        if (not first_connection_flag) or (check_internet_cnt >= 50):
             logger.info("Internet connection is established")
+            check_internet_cnt = 0
             first_connection_flag = True
 
         if modem.incident_flag:

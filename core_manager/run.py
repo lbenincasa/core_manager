@@ -11,15 +11,57 @@ from nm import manage_network
 from monitor import monitor
 from configurator import configure
 from geolocation import update_geolocation
+
 #from modules.imu import sensor
 import modules.imu as imu
-
+import paho.mqtt.client as mqtt
 import time
+import struct
 
 
 lock = Lock()
 event = Event()
 #modem = BaseModule() --> gia' dichiarata in cm.py
+
+client = mqtt.Client()
+latency  = 0.0
+latency2 = 0.0
+
+#---------------------------------------------MQTT
+# Raspberry PI IP address
+#MQTT_BROKER = "172.30.55.106"
+#OLD MQTT_BROKER = "172.30.45.93"
+#MQTT_BROKER = "broker.emqx.io"
+#MQTT_BROKER = "192.168.100.100"
+## oracle-03
+MQTT_BROKER = "130.162.34.184"
+
+MQTT_PING = "rw/host/ping"
+MQTT_PONG = "rw/host/pong"
+
+# The callback for when the client receives a CONNACK response from the server.
+def on_connect(client, userdata, flags, rc):
+    print(f"Connected to broker '{client._host}' with result code {str(rc)}")
+
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+    #client.subscribe(MQTT_CMD)
+    client.subscribe(MQTT_PING)
+    client.subscribe(MQTT_PONG)
+
+
+# The callback for when a PUBLISH message is received from the server.
+def on_message(client, userdata, msg):
+    global latency, latency2
+
+    if msg.topic == MQTT_PONG:
+       #_t = struct.unpack('>f',msg.payload)[0]
+       latency = time.time() - float(msg.payload)
+    
+    if msg.topic == MQTT_PING:
+       #_t = struct.unpack('>f',msg.payload)[0]
+       latency2 = time.time() - float(msg.payload)
+
 
 def thread_manage_connection(event_object):
     global modem
@@ -51,38 +93,55 @@ def thread_monitor_and_config(event_object):
         event_object.wait(conf.get_send_monitoring_data_interval_config())
 
 def thread_monitor(event_object):
-    global modem
+    global modem, client
     logger.info("Monitor started.")
-    imu.DoInit()
 
     while True:
       if modem.monitor["cellular_connection"]: # is internet ok ?!?
+        #imu.printSensors()
+        #print(f"Quaternion: {imu.getSensors().quaternion}")
+        imu.publishSensors(client)
+        pass
 
-        print(f"Temperature: {imu.sensor.temperature} degrees C")
-        #    """
-        #    print(
-        #        "Temperature: {} degrees C".format(temperature())
-        #    )  # Uncomment if using a Raspberry Pi
-        #    """
-        acc = imu.sensor.acceleration
-        #client.publish(MQTT_SENSOR_ACC, json.dumps(acc))
-    #    print("Accelerometer (m/s^2): {}".format(sensor.acceleration))
-        print("Accelerometer (m/s^2): {}".format(acc))
-        print("Magnetometer (microteslas): {}".format(imu.sensor.magnetic))
-        print("Gyroscope (rad/sec): {}".format(imu.sensor.gyro))
-        print("Euler angle: {}".format(imu.sensor.euler))
-        print("Quaternion: {}".format(imu.sensor.quaternion))
-        print("Linear acceleration (m/s^2): {}".format(imu.sensor.linear_acceleration))
-        print("Gravity (m/s^2): {}".format(imu.sensor.gravity))
-        print()
+      time.sleep(0.5)
 
-        time.sleep(0.5)
+def thread_mqtt(event_object):
+    global modem, client
+    logger.info("MQTT started.")
+
+    client.on_connect = on_connect
+    client.on_message = on_message
+
+    while True:
+      if modem.monitor["cellular_connection"]: # is internet ok ?!?
+         rc = client.connect(MQTT_BROKER)
+         if rc == 0:
+            client.loop_start() 
+            while True:
+                now = time.time()
+                _now = struct.pack('>f', now)
+                client.publish(MQTT_PING, now)
+
+                time.sleep(0.1)
+
+      time.sleep(0.5)
+
+
 
 def main():
     Thread(target=thread_manage_connection, args=(event,)).start()
     #Thread(target=thread_monitor_and_config, args=(event,)).start()
+    
+    # Monitor thread (es. IMU, etc.)
     myMonitor = Thread(target=thread_monitor, args=(event,))
+    myMonitor.setName("thread_monitor")
     myMonitor.start()
+
+    # MQTT thread
+    myMQTT = Thread(target=thread_mqtt, args=(event,))
+    myMQTT.setName("thread_mqtt")
+    myMQTT.start()
+
 
 
 if __name__ == "__main__":

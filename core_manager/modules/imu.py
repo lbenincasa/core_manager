@@ -8,11 +8,10 @@ import json
 import adafruit_bno055
 
 
-#i2c = board.I2C()  # uses board.SCL and board.SDA
+i2c = board.I2C()  # uses board.SCL and board.SDA
 # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
-#sensor = adafruit_bno055.BNO055_I2C(i2c)
-i2c = {}
-sensor = {}
+sensors = adafruit_bno055.BNO055_I2C(i2c)
+MQTT_SENSOR_IMU = "rw/host/sensors/imu/"
 
 # If you are going to use UART uncomment these lines
 # uart = board.UART()
@@ -20,19 +19,47 @@ sensor = {}
 
 last_val = 0xFFFF
 
-def DoInit():
-    i2c = board.I2C()
-    sensor = adafruit_bno055.BNO055_I2C(i2c)
-
 def temperature():
     global last_val  # pylint: disable=global-statement
-    result = sensor.temperature
+    result = sensors.temperature
     if abs(result - last_val) == 128:
-        result = sensor.temperature
+        result = sensors.temperature
         if abs(result - last_val) == 128:
             return 0b00111111 & result
     last_val = result
     return result
+
+def publishSensors(client,topic=MQTT_SENSOR_IMU):
+    client.publish(topic+"acceleration", json.dumps(sensors.acceleration))
+    client.publish(topic+"magnetic", json.dumps(sensors.magnetic))
+    client.publish(topic+"gyro", json.dumps(sensors.gyro))
+    client.publish(topic+"euler", json.dumps(sensors.euler))
+    client.publish(topic+"quaternion", json.dumps(sensors.quaternion))
+    client.publish(topic+"linear_acceleration", json.dumps(sensors.linear_acceleration))
+    client.publish(topic+"gravity", json.dumps(sensors.gravity))
+
+
+def printSensors():
+    print(f"Temperature: {sensors.temperature} degrees C")
+#    """
+#    print(
+#        "Temperature: {} degrees C".format(temperature())
+#    )  # Uncomment if using a Raspberry Pi
+#    """
+    acc = sensors.acceleration
+    #client.publish(MQTT_SENSOR_ACC, json.dumps(acc))
+#    print("Accelerometer (m/s^2): {}".format(sensor.acceleration))
+    print(f"Accelerometer (m/s^2): {acc}")
+    print(f"Magnetometer (microteslas): {sensors.magnetic}")
+    print(f"Gyroscope (rad/sec): {sensors.gyro}")
+    print(f"Euler angle: {sensors.euler}")
+    print(f"Quaternion: {sensors.quaternion}")
+    print(f"Linear acceleration (m/s^2): {sensors.linear_acceleration}")
+    print(f"Gravity (m/s^2): {sensors.gravity}")
+    print()
+
+def getSensors():
+    return sensors
 
 #---------------------------------------------MQTT
 # Raspberry PI IP address
@@ -48,7 +75,7 @@ MQTT_SENSOR_ACC = "rw/host/monitor/acc"
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
-    print("Connected to broker '" + MQTT_BROKER + "' with result code " + str(rc))
+    print(f"Connected to broker '{client._host}' with result code {str(rc)}")
 
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
@@ -61,35 +88,18 @@ def on_connect(client, userdata, flags, rc):
 def on_message(client, userdata, msg):
    pass
 
-client = mqtt.Client()
-client.on_connect = on_connect
-client.on_message = on_message
-
-client.connect(MQTT_BROKER)
-
-# Starting thread which will receive the frames
-client.loop_start()
-
 
 if __name__ == "__main__":
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.connect(MQTT_BROKER)
+
+    # Starting thread which will receive the frames
+    client.loop_start()
+
     while True:
         if 1:  
-            print("Temperature: {} degrees C".format(sensor.temperature))
-        #    """
-        #    print(
-        #        "Temperature: {} degrees C".format(temperature())
-        #    )  # Uncomment if using a Raspberry Pi
-        #    """
-            acc = sensor.acceleration
-            client.publish(MQTT_SENSOR_ACC, json.dumps(acc))
-        #    print("Accelerometer (m/s^2): {}".format(sensor.acceleration))
-            print("Accelerometer (m/s^2): {}".format(acc))
-            print("Magnetometer (microteslas): {}".format(sensor.magnetic))
-            print("Gyroscope (rad/sec): {}".format(sensor.gyro))
-            print("Euler angle: {}".format(sensor.euler))
-            print("Quaternion: {}".format(sensor.quaternion))
-            print("Linear acceleration (m/s^2): {}".format(sensor.linear_acceleration))
-            print("Gravity (m/s^2): {}".format(sensor.gravity))
-            print()
-
+            printSensors()
+            publishSensors(client)
             time.sleep(0.5)

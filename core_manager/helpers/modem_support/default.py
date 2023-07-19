@@ -79,12 +79,12 @@ class BaseModule:
         output = send_at_com("AT+CGDCONT?", apn_with_quotes)
 
         if output[2] == 0:
-            logger.info("APN is up-to-date.")
+            logger.info(" APN is up-to-date.")
         else:
             output = send_at_com(f'AT+CGDCONT=1,"IPV4V6","{conf.apn}"', "OK")
 
             if output[2] == 0:
-                logger.info("APN is updated succesfully : %s", conf.apn)
+                logger.info(" APN is updated succesfully : %s", conf.apn)
             else:
                 raise ModemNotReachable("APN couldn't be set successfully!")
 
@@ -160,7 +160,7 @@ class BaseModule:
 
         output = send_at_com("AT+CPIN?", "CPIN: READY")
         if output[2] == 0:
-            logger.info("SIM is ready.")
+            logger.info(" SIM is ready.")
         else:
             logger.error(output[0])
             raise SIMNotReady(output[0])
@@ -170,7 +170,7 @@ class BaseModule:
         output = send_at_com("AT+CREG?", "OK")
         if output[2] == 0:
             if output[0].find("+CREG: 0,1") != -1 or output[0].find("+CREG: 0,5") != -1:
-                logger.info("Network is registered")
+                logger.info(" Network is registered")
             else:
                 raise NetworkRegFailed("Network not registered: ", output)
         else:
@@ -182,7 +182,7 @@ class BaseModule:
         output = send_at_com(self.pdp_status_command, "OK")
         if output[2] == 0:
             if output[0].find("0,1") != -1 or output[0].find("1,1") != -1:
-                logger.info("ECM is already initiated.")
+                logger.info(" ECM is already initiated.")
                 time.sleep(10)
                 return 0
 
@@ -195,7 +195,7 @@ class BaseModule:
 
                 if output[2] == 0:
                     if output[0].find("0,1") != -1 or output[0].find("1,1") != -1:
-                        logger.info("ECM is initiated.")
+                        logger.info(" ECM is initiated.")
                         time.sleep(connection_delay)
                         return 0
                     else:

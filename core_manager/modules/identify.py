@@ -42,7 +42,7 @@ def identify_modem():
     system_id["modem_vendor_id"] = ""
     system_id["modem_product_id"] = ""
 
-    logger.info("Tyring to detect modem...")
+    logger.info("Trying to detect modem...")
 
     output = shell_command("lsusb")
 

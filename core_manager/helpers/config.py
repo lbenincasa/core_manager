@@ -28,7 +28,7 @@ default_config = {
     "sbc": core_env.get("board", "RaspberryPi4"),
     "debug_mode": False,
     "verbose_mode": False,
-    "check_internet_interval": 5,
+    "check_internet_interval": 3,
     "send_monitoring_data_interval": 5,
     "ping_timeout": 9,
     "other_ping_timeout": 3,
