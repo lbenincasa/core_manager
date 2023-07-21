@@ -47,24 +47,30 @@ MQTT_PONG = "rw/host/pong"
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
-    print(f"Connected to broker '{client._host}' with result code {str(rc)}")
+    msg = f"Connected to broker '{client._host}' with result code {str(rc)}"
+    print(msg)
+    logger.info(msg)
 
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
     if rc == 0:
-        print(f"Subscribing to topics...")
+        msg = f" Broker '{client._host}': subscribing to topics..."
+        print(msg)
+        logger.info(msg)
         #client.subscribe(MQTT_CMD)
         client.subscribe(MQTT_PING)
         client.subscribe(MQTT_PONG)
         rgpio.onConnect(client, userdata, flags, rc)
 
 def on_connect_fail(client, userdata):
-    print(f"Connect fail to the broker '{client._host}'")
+    msg = f"Connect fail to the broker '{client._host}'"
+    print(msg)
+    logger.warning(msg)
 
 def on_disconnect(client, userdata, rc):
-    print(f"Disconnected from broker '{client._host}' with result code {str(rc)}")
-
-
+    msg = f"Disconnected from broker '{client._host}' with result code {str(rc)}"
+    print(msg)
+    logger.warning(msg)
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
@@ -79,8 +85,6 @@ def on_message(client, userdata, msg):
        latency2 = time_func() - float(msg.payload)
     
     rgpio.onMessage(client, userdata, msg)
-
-
 
 
 def thread_manage_connection(event_object):
@@ -114,7 +118,7 @@ def thread_monitor_and_config(event_object):
 
 def thread_monitor(event_object):
     global modem, client
-    logger.info("Monitor started.")
+    logger.info("Monitor thread started.")
 
     while True:
       if modem.monitor["cellular_connection"]: # is internet ok ?!?
@@ -128,7 +132,7 @@ def thread_monitor(event_object):
 
 def thread_mqtt(event_object):
     global modem, client
-    logger.info("MQTT started.")
+    logger.info("MQTT thread started.")
 
     client.on_connect = on_connect
     client.on_connect_fail = on_connect_fail
