@@ -20,9 +20,9 @@ class myCam(object):
   param4 = ()
 
   # Raspberry PI IP address
-  MQTT_BROKER = "172.30.55.106"
+  #MQTT_BROKER = "172.30.55.106"
   #MQTT_BROKER = "broker.emqx.io"
-  #MQTT_BROKER = "192.168.100.100"
+  MQTT_BROKER = "192.168.100.100"
   ## oracle-03
   #MQTT_BROKER = "130.162.34.184"
 
@@ -34,8 +34,10 @@ class myCam(object):
       self.cnt = 0
       self.size = 0
       self.start = time.time()
+      self.print_period = 2.0 #sec
+      self.print_enabled = True
       self.frame_diff = np.zeros((480, 640, 3), np.int16)
-      self.quality = [50,25]
+      self.quality = 50 #JPEG quality
       self.picam2 = Picamera2()
       self.picam2.still_configuration.main.size = (640,480)
       #picam2.still_configuration.main.size = (800,600)
@@ -45,10 +47,11 @@ class myCam(object):
       self.picam2.still_configuration.controls.FrameRate = 10.0
       self.picam2.still_configuration.align()
       self.picam2.configure("still")
-      self.picam2.pre_callback = apply_text
+      self.picam2.pre_callback = self.apply_text
       self.picam2.start()
 
   def publishData(self,client):
+      # wait for a new frame
       _frame = self.picam2.capture_array()
       self.cnt += 1
 
@@ -59,18 +62,10 @@ class myCam(object):
 
         # Encoding the Frame
         #_, buffer = cv2.imencode('.jpg', frame)
-        compression_params = [cv2.IMWRITE_JPEG_QUALITY, 50]
-        #compression_params = [cv2.IMWRITE_JPEG_QUALITY, quality[cnt % len(quality)]]
+        compression_params = [cv2.IMWRITE_JPEG_QUALITY, self.quality]
         _, buffer = cv2.imencode('.jpg', frame, compression_params)
       else:
-        #frame = cv2.subtract(reference, frame)
-        #frame = cv2.subtract(_frame,prev)
-        #frame = cv2.subtract(_frame,prev,frame_diff,mask,cv2.CV_16S)
-        #_in1 = np.array(_frame, dtype='int16')
-        #_in2 = np.array(prev, dtype='int16')
-        #frame = cv2.subtract(_in1,_in2,frame_diff)
         frame = cv2.subtract(_frame.astype(np.int16),prev.astype(np.int16))
-        #,frame_diff)
         frame += 128
         frame = frame.astype(np.uint8)
         
@@ -103,37 +98,36 @@ class myCam(object):
       client.publish(topic, byte_encode)
       self.size += len(byte_encode)
 
-      now = time.time()
-      dt = now - self.start
-      if dt > 1.5:
-        self.start = time.time()
-        #fps = 1/t
-        #print(int(dt))
-        bps = self.size / dt # bytes/sec
-        pps = self.cnt / dt  # pkt/sec
+      if self.print_enabled:
+        now = time.time()
+        dt = now - self.start
+        if dt > self.print_period:
+          self.start = time.time()
+          #fps = 1/t
+          #print(int(dt))
+          bps = self.size / dt # bytes/sec
+          pps = self.cnt / dt  # pkt/sec
 
-        print(int(dt),"sec, band:",int((bps/1024)*8),"[Kbit/s], pkt:", self.cnt, ", pkt size:", int(self.size/self.cnt), "[bytes], pkt per sec:", int(pps))
-        self.size = 0
-        self.cnt = 0
+          print(int(dt),"sec, band:",int((bps/1024)*8),"[Kbit/s], pkt:", self.cnt, ", pkt size:", int(self.size/self.cnt), "[bytes], pkt per sec:", int(pps))
+          self.size = 0
+          self.cnt = 0
 
+  def apply_text(self, request):
+    #timestamp = "beni: " + time.strftime("%y-%m-%d %X.") + str(time.time_ns())
+    #global cnt
+    #timestamp = time.strftime("%X. %f") #[:-3] + " #" + str(self.cnt)
+    timestamp = time.strftime("%X") + " " + str(self.cnt)
+    colour = (255, 255, 255)
+    origin  = (3, 20)
+    origin2 = (3, 40)
 
-
-def apply_text(request):
-  #timestamp = "beni: " + time.strftime("%y-%m-%d %X.") + str(time.time_ns())
-  #timestamp = "beni: " + time.strftime("%X.") + str(time.time_ns()/1000000)
-  global cnt
-  timestamp = time.strftime("%X.") #+ str(cnt)
-  colour = (255, 255, 255)
-  origin  = (3, 20)
-  origin2 = (3, 40)
-
-  font = cv2.FONT_HERSHEY_SIMPLEX
-  scale = .5
-  thickness = 1
-  with MappedArray(request, "main") as m:
-    cv2.putText(m.array, timestamp, origin, font, scale, colour, thickness)
-    cv2.putText(m.array, "MJPEG", origin2, font, scale, colour, thickness)
-    #cv2.putText(m.array, timestamp,(5, 30),cv2.FONT_HERSHEY_SIMPLEX,1,(0, 255, 255),1)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    scale = .5
+    thickness = 1
+    with MappedArray(request, "main") as m:
+      cv2.putText(m.array, timestamp, origin, font, scale, colour, thickness)
+      cv2.putText(m.array, "MJPEG-"+str(self.quality), origin2, font, scale, colour, thickness)
+      #cv2.putText(m.array, timestamp,(5, 30),cv2.FONT_HERSHEY_SIMPLEX,1,(0, 255, 255),1)
 
 class StreamingHandler(SimpleHTTPRequestHandler):
   ##  Custom do_GET

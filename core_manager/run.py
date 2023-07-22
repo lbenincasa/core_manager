@@ -15,6 +15,8 @@ from geolocation import update_geolocation
 #from modules.imu import sensor
 import modules.imu as imu
 import modules.remote_gpio as rgpio
+import modules.cam as mycam
+
 import paho.mqtt.client as mqtt
 import time
 import struct
@@ -35,10 +37,10 @@ latency2 = 0.0
 
 #---------------------------------------------MQTT
 # Raspberry PI IP address
-MQTT_BROKER = "172.30.55.106"
+#MQTT_BROKER = "172.30.55.106"
 #OLD MQTT_BROKER = "172.30.45.93"
 #MQTT_BROKER = "broker.emqx.io"
-#MQTT_BROKER = "192.168.100.100"
+MQTT_BROKER = "192.168.100.100"
 ## oracle-03
 #MQTT_BROKER = "130.162.34.184"
 
@@ -161,6 +163,21 @@ def thread_mqtt(event_object):
 
       time.sleep(0.5)
 
+def thread_cam(event_object):
+    global modem, client
+    logger.info("CAM thread started.")
+
+    cam = mycam.myCam()
+
+    while True:
+      if modem.monitor["cellular_connection"]: # is internet ok ?!?
+
+        while True:
+            cam.publishData(client)
+
+      time.sleep(0.1)
+
+
 
 
 def main():
@@ -177,6 +194,10 @@ def main():
     myMQTT.setName("thread_mqtt")
     myMQTT.start()
 
+    # CAM thread
+    myMQTT = Thread(target=thread_cam, args=(event,))
+    myMQTT.setName("thread_cam")
+    myMQTT.start()
 
 
 if __name__ == "__main__":
