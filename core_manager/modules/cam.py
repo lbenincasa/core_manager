@@ -36,6 +36,7 @@ class myCam(object):
       self.start = time.time()
       self.print_period = 2.0 #sec
       self.print_enabled = True
+      self.latency = [0.0,0.0]
       self.frame_diff = np.zeros((480, 640, 3), np.int16)
       self.quality = 50 #JPEG quality
       self.picam2 = Picamera2()
@@ -50,8 +51,9 @@ class myCam(object):
       self.picam2.pre_callback = self.apply_text
       self.picam2.start()
 
-  def publishData(self,client):
+  def publishData(self,client,latency):
       # wait for a new frame
+      self.latency = latency
       _frame = self.picam2.capture_array()
       self.cnt += 1
 
@@ -108,7 +110,10 @@ class myCam(object):
           bps = self.size / dt # bytes/sec
           pps = self.cnt / dt  # pkt/sec
 
-          print(int(dt),"sec, band:",int((bps/1024)*8),"[Kbit/s], pkt:", self.cnt, ", pkt size:", int(self.size/self.cnt), "[bytes], pkt per sec:", int(pps))
+          _l1 = self.latency[0]*1000.0/2
+          _l2 = self.latency[1]*1000.0/2
+
+          print(int(dt),"sec, band:",int((bps/1024)*8),"[Kbit/s], pkt:", self.cnt, ", pkt size:", int(self.size/self.cnt), "[bytes], pkt per sec:", int(pps), "latency [ms]: " + str(int(_l2)) + " - " + str(int(_l1)))
           self.size = 0
           self.cnt = 0
 
@@ -120,13 +125,19 @@ class myCam(object):
     colour = (255, 255, 255)
     origin  = (3, 20)
     origin2 = (3, 40)
+    origin3 = (3, 60)
 
     font = cv2.FONT_HERSHEY_SIMPLEX
     scale = .5
     thickness = 1
+
+    _l1 = self.latency[0]*1000.0/2
+    _l2 = self.latency[1]*1000.0/2
+   
     with MappedArray(request, "main") as m:
       cv2.putText(m.array, timestamp, origin, font, scale, colour, thickness)
       cv2.putText(m.array, "MJPEG-"+str(self.quality), origin2, font, scale, colour, thickness)
+      cv2.putText(m.array, "latency [ms]: " + str(int(_l2)) + " - " + str(int(_l1)), origin3, font, scale, colour, thickness)
       #cv2.putText(m.array, timestamp,(5, 30),cv2.FONT_HERSHEY_SIMPLEX,1,(0, 255, 255),1)
 
 class StreamingHandler(SimpleHTTPRequestHandler):
@@ -184,7 +195,7 @@ if __name__ == "__main__":
     # server.serve_forever()
 
       while True:
-        cam.publishData(client)
+        cam.publishData(client,[0.0,0.0])
     
     except:
       #cap.release()

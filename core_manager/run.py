@@ -32,8 +32,7 @@ event = Event()
 #modem = BaseModule() --> gia' dichiarata in cm.py
 
 client = mqtt.Client()
-latency  = 0.0
-latency2 = 0.0
+latency  = [0.0,0.0]
 
 #---------------------------------------------MQTT
 # Raspberry PI IP address
@@ -76,15 +75,15 @@ def on_disconnect(client, userdata, rc):
 
 # The callback for when a PUBLISH message is received from the server.
 def on_message(client, userdata, msg):
-    global latency, latency2
+    global latency
 
     if msg.topic == MQTT_PONG:
        #_t = struct.unpack('>f',msg.payload)[0]
-       latency = time_func() - float(msg.payload)
+       latency[0] = time_func() - float(msg.payload)
     
     if msg.topic == MQTT_PING:
        #_t = struct.unpack('>f',msg.payload)[0]
-       latency2 = time_func() - float(msg.payload)
+       latency[1] = time_func() - float(msg.payload)
     
     rgpio.onMessage(client, userdata, msg)
 
@@ -167,17 +166,23 @@ def thread_cam(event_object):
     global modem, client
     logger.info("CAM thread started.")
 
-    cam = mycam.myCam()
+    try:
+      cam = mycam.myCam()
+    except:
+      logger.warning("Exception on creating myCam...")
 
     while True:
-      if modem.monitor["cellular_connection"]: # is internet ok ?!?
-
-        while True:
-            cam.publishData(client)
+      if cam is None:
+        try:
+            cam = mycam.myCam()
+        except:
+            logger.warning("Exception on creating myCam...")
+      else:
+        if modem.monitor["cellular_connection"]: # is internet ok ?!?
+            while True:
+                cam.publishData(client, latency)
 
       time.sleep(0.1)
-
-
 
 
 def main():
@@ -195,9 +200,9 @@ def main():
     myMQTT.start()
 
     # CAM thread
-    myMQTT = Thread(target=thread_cam, args=(event,))
-    myMQTT.setName("thread_cam")
-    myMQTT.start()
+    myCAM = Thread(target=thread_cam, args=(event,))
+    myCAM.setName("thread_cam")
+    myCAM.start()
 
 
 if __name__ == "__main__":

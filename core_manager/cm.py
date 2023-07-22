@@ -26,17 +26,20 @@ logger.info("Core Manager started.")
 
 def _organizer():
     if queue.base == "organizer":
-        queue.sub = "identify_modem"
+        #Beni, was: queue.sub = "identify_modem"
+        #step eseguito al primo avvio del sistema
+        queue.sub = "check_internet_init"
     else:
-        if queue.is_ok:
+        if queue.is_ok: #OK --> next step is 'success'
             queue.sub = queue.success
+            #queue.interval = NO_WAIT_INTERVAL
             queue.is_ok = False
         else:
-            if queue.counter >= queue.retry:
+            if queue.counter >= queue.retry: #NOK --> too many retries, next step is 'fail'
                 queue.sub = queue.fail
                 queue.clear_counter()
                 queue.interval = NO_WAIT_INTERVAL
-            else:
+            else: #NOK --> retrying, next step is 'base' (the current one)
                 queue.sub = queue.base
                 queue.counter_tick()
 
@@ -222,6 +225,16 @@ def _check_internet():
             is_ok=False,
             retry=0,
         )
+    elif queue.sub == "check_internet_init":
+        queue.set_step(
+            sub="organizer",
+            base="check_internet_init",
+            success="identify_modem",
+            fail="identify_modem",
+            interval=1,
+            is_ok=False,
+            retry=2,
+        )
 
     try:
         modem.check_internet()
@@ -245,6 +258,28 @@ def _check_internet():
             logger.info("Internet connection is restored")
 
         queue.is_ok = True
+
+def _check_internet_init():
+    queue.set_step(
+        sub="organizer",
+        base="check_internet_init",
+        success="identify_modem",
+        fail="identify_modem",
+        interval=1,
+        is_ok=False,
+        retry=2,
+    )
+
+    try:
+        modem.check_internet()
+    except Exception as error:
+        logger.error("check_interne_initt() -> %s", error)
+        queue.is_ok = False
+    else:
+
+        logger.info("Init: internet already available!")
+        queue.is_ok = True
+
 
 
 def _diagnose():
@@ -421,6 +456,7 @@ steps = {
     "check_internet_after_rui": _check_internet,  # 10
     "reset_modem_softly": _reset_modem_softly,  # 11
     "reset_modem_hardly": _reset_modem_hardly,  # 12
+    "check_internet_init": _check_internet_init,  # 0.5
 }
 
 

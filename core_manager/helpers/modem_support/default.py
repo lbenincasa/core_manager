@@ -213,9 +213,19 @@ class BaseModule:
         if output[2] != 0:
             raise NoInternet("No internet!")
 
+    def check_interface_health2(self, timeout):
+        output = shell_command(f"ping -q -c 1 -s 8 -w {timeout} 1.1.1.1")
+
+        if output[2] != 0:
+            raise NoInternet("No internet!")
+
+
     def check_internet(self):
         try:
-            self.check_interface_health(self.interface_name, conf.ping_timeout)
+            if self.interface_name == '':
+                self.check_interface_health2(conf.ping_timeout)
+            else:
+                self.check_interface_health(self.interface_name, conf.ping_timeout)
         except Exception as error:
             self.monitor["cellular_connection"] = False
             raise NoInternet("No internet!") from error
