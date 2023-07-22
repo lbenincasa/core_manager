@@ -29,23 +29,26 @@ def _organizer():
         #Beni, was: queue.sub = "identify_modem"
         #step eseguito al primo avvio del sistema
         queue.sub = "check_internet_init"
+        queue.wait = NO_WAIT_INTERVAL
     else:
         if queue.is_ok: #OK --> next step is 'success'
             queue.sub = queue.success
-            #queue.interval = NO_WAIT_INTERVAL
             queue.is_ok = False
         else:
             if queue.counter >= queue.retry: #NOK --> too many retries, next step is 'fail'
                 queue.sub = queue.fail
                 queue.clear_counter()
-                queue.interval = NO_WAIT_INTERVAL
+                #queue.interval = NO_WAIT_INTERVAL
+                queue.wait = NO_WAIT_INTERVAL
             else: #NOK --> retrying, next step is 'base' (the current one)
                 queue.sub = queue.base
                 queue.counter_tick()
+                queue.wait = queue.interval
 
                 # Exception for the second chance of internet control
                 if queue.base == "check_internet_base":
-                    queue.interval = SECOND_CHECK_INTERVAL
+                    #Beni, was: queue.interval = SECOND_CHECK_INTERVAL
+                    queue.wait = SECOND_CHECK_INTERVAL
 
 
 def _identify_modem():
@@ -55,6 +58,7 @@ def _identify_modem():
         base="identify_modem",
         success="identify_setup",
         fail="diagnose_last_exit",
+        wait=NO_WAIT_INTERVAL,
         interval=2,
         is_ok=False,
         retry=20,
@@ -78,6 +82,7 @@ def _identify_setup():
         base="identify_setup",
         success="configure_modem",
         fail="diagnose_last_exit",
+        wait=NO_WAIT_INTERVAL,
         interval=2,
         is_ok=False,
         retry=20,
@@ -112,6 +117,7 @@ def _configure_modem():
         base="configure_modem",
         success="check_sim_ready",
         fail="diagnose_repeated",
+        wait=NO_WAIT_INTERVAL,
         interval=1,
         is_ok=False,
         retry=5,
@@ -136,6 +142,7 @@ def _check_sim_ready():
         base="check_sim_ready",
         success="check_network",
         fail="diagnose_repeated",
+        wait=NO_WAIT_INTERVAL,
         interval=1,
         is_ok=False,
         retry=5,
@@ -156,6 +163,7 @@ def _check_network():
         base="check_network",
         success="initiate_ecm",
         fail="diagnose_repeated",
+        wait=NO_WAIT_INTERVAL,
         interval=5,
         is_ok=False,
         retry=180, # 15 minutes
@@ -176,6 +184,7 @@ def _initiate_ecm():
         base="initiate_ecm",
         success="check_internet_base",
         fail="diagnose_repeated",
+        wait=NO_WAIT_INTERVAL,
         interval=0.1,
         is_ok=False,
         retry=5,
@@ -201,7 +210,8 @@ def _check_internet():
             base="check_internet_base",
             success="check_internet_base",
             fail="diagnose_base",
-            interval=conf.check_internet_interval,
+            wait = conf.check_internet_interval,
+            interval = conf.check_internet_interval,
             is_ok=False,
             retry=1,
         )
@@ -211,6 +221,7 @@ def _check_internet():
             base="check_internet_after_rci",
             success="check_internet_base",
             fail="reset_usb_interface",
+            wait=NO_WAIT_INTERVAL,
             interval=10,
             is_ok=False,
             retry=0,
@@ -221,6 +232,7 @@ def _check_internet():
             base="check_internet_after_rui",
             success="check_internet_base",
             fail="reset_modem_softly",
+            wait=NO_WAIT_INTERVAL,
             interval=10,
             is_ok=False,
             retry=0,
@@ -231,6 +243,7 @@ def _check_internet():
             base="check_internet_init",
             success="identify_modem",
             fail="identify_modem",
+            wait=NO_WAIT_INTERVAL,
             interval=1,
             is_ok=False,
             retry=2,
@@ -265,6 +278,7 @@ def _check_internet_init():
         base="check_internet_init",
         success="identify_modem",
         fail="identify_modem",
+        wait=NO_WAIT_INTERVAL,
         interval=1,
         is_ok=False,
         retry=2,
@@ -294,6 +308,7 @@ def _diagnose():
             base="diagnose_base",
             success="reset_connection_interface",
             fail="reset_connection_interface",
+            wait=NO_WAIT_INTERVAL,
             interval=0.1,
             is_ok=False,
             retry=5,
@@ -305,6 +320,7 @@ def _diagnose():
             base="diagnose_repeated",
             success="reset_modem_softly",
             fail="reset_modem_softly",
+            wait=NO_WAIT_INTERVAL,
             interval=0.1,
             is_ok=False,
             retry=5,
@@ -316,6 +332,7 @@ def _diagnose():
             base="diagnose_last_exit",
             success="reset_modem_hardly",
             fail="reset_modem_hardly",
+            wait=NO_WAIT_INTERVAL,
             interval=0.1,
             is_ok=False,
             retry=5,
@@ -337,6 +354,7 @@ def _reset_connection_interface():
         base="reset_connection_interface",
         success="check_internet_after_rci",
         fail="reset_usb_interface",
+        wait=NO_WAIT_INTERVAL,
         interval=1,
         is_ok=False,
         retry=2,
@@ -357,6 +375,7 @@ def _reset_usb_interface():
         base="reset_usb_interface",
         success="check_internet_after_rui",
         fail="reset_modem_softly",
+        wait=NO_WAIT_INTERVAL,
         interval=1,
         is_ok=False,
         retry=2,
@@ -384,6 +403,7 @@ def _reset_modem_softly():
             base="reset_modem_softly",
             success="identify_modem",
             fail="reset_modem_hardly",
+            wait=NO_WAIT_INTERVAL,
             interval=1,
             is_ok=False,
             retry=1,
@@ -404,6 +424,7 @@ def _reset_modem_softly():
             base="reset_modem_softly",
             success="identify_modem",
             fail="reset_modem_hardly",
+            wait=NO_WAIT_INTERVAL,
             interval=1,
             is_ok=False,
             retry=1,
@@ -424,6 +445,7 @@ def _reset_modem_hardly():
         base="reset_modem_hardly",
         success="identify_modem",
         fail="identify_modem",
+        wait=NO_WAIT_INTERVAL,
         interval=1,
         is_ok=False,
         retry=1,
@@ -468,10 +490,12 @@ def manage_connection():
     # main execution of step
     if queue.sub == "organizer":
         execute_step(queue.sub)
-        return queue.interval
+        #Beni, was: return queue.interval
+        return queue.wait
     elif queue.sub == "identify_setup":  # modem identification is OK.
         execute_step(queue.sub)
-        return (queue.interval, modem)
+        #Beni, was: return (queue.interval, modem)
+        return (queue.wait, modem)
     # organiser step
     execute_step(queue.sub)
     return NO_WAIT_INTERVAL

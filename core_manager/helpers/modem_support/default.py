@@ -183,7 +183,8 @@ class BaseModule:
         if output[2] == 0:
             if output[0].find("0,1") != -1 or output[0].find("1,1") != -1:
                 logger.info(" ECM is already initiated.")
-                time.sleep(10)
+                #Beni, was: time.sleep(10)
+                time.sleep(0.1)
                 return 0
 
         logger.info("ECM Connection is initiating...")
@@ -199,7 +200,7 @@ class BaseModule:
                         time.sleep(connection_delay)
                         return 0
                     else:
-                        time.sleep(5)
+                        time.sleep(3)
                 else:
                     time.sleep(2)
 
