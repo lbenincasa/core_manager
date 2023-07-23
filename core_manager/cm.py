@@ -250,7 +250,7 @@ def _check_internet():
         )
 
     try:
-        modem.check_internet()
+        res = modem.check_internet()
     except Exception as error:
         logger.error("check_internet() -> %s", error)
         queue.is_ok = False
@@ -261,7 +261,12 @@ def _check_internet():
         check_internet_cnt += 1
 
         if (not first_connection_flag) or (check_internet_cnt >= 50):
-            logger.info("Internet connection is established")
+            interface = "unknown"
+            if res == 1:
+                interface = "default"
+            elif res == 2:
+                interface = "cellular"
+            logger.info(f"Internet available through the {interface} interface")
             check_internet_cnt = 0
             first_connection_flag = True
 
@@ -285,13 +290,18 @@ def _check_internet_init():
     )
 
     try:
-        modem.check_internet()
+        res = modem.check_internet()
     except Exception as error:
         logger.error("check_interne_initt() -> %s", error)
         queue.is_ok = False
     else:
 
-        logger.info("Init: internet already available!")
+        interface = "unknown"
+        if res == 1:
+            interface = "default"
+        elif res == 2:
+            interface = "cellular"
+        logger.info(f"Init: internet available through the {interface} interface")
         queue.is_ok = True
 
 

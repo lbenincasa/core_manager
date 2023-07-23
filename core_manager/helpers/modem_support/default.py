@@ -222,16 +222,22 @@ class BaseModule:
 
 
     def check_internet(self):
+        res = 0
         try:
             if self.interface_name == '':
+                #check internet through the default gw
+                res = 1
                 self.check_interface_health2(conf.ping_timeout)
             else:
+                #check internet through the cellular interface
+                res = 2
                 self.check_interface_health(self.interface_name, conf.ping_timeout)
         except Exception as error:
             self.monitor["cellular_connection"] = False
             raise NoInternet("No internet!") from error
         else:
             self.monitor["cellular_connection"] = True
+            return res
 
     def reset_connection_interface(self):
         down_command = f"sudo ifconfig {self.interface_name} down"
