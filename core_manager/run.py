@@ -39,9 +39,9 @@ latency  = [0.0,0.0]
 #MQTT_BROKER = "172.30.55.106"
 #OLD MQTT_BROKER = "172.30.45.93"
 #MQTT_BROKER = "broker.emqx.io"
-MQTT_BROKER = "192.168.100.100"
+#MQTT_BROKER = "192.168.100.100"
 ## oracle-03
-#MQTT_BROKER = "130.162.34.184"
+MQTT_BROKER = "130.162.34.184"
 
 MQTT_PING = "rw/host/ping"
 MQTT_PONG = "rw/host/pong"
@@ -120,6 +120,7 @@ def thread_monitor_and_config(event_object):
 def thread_monitor(event_object):
     global modem, client
     logger.info("Monitor thread started.")
+    toggle = 0
 
     while True:
       if modem.monitor["cellular_connection"]: # is internet ok ?!?
@@ -127,7 +128,11 @@ def thread_monitor(event_object):
         #print(f"Quaternion: {imu.getSensors().quaternion}")
         imu.publishSensors(client)
         rgpio.publishData(client)
-        pass
+        if toggle:
+            rgpio.UserLedOn()
+        else:
+            rgpio.UserLedOff()
+        toggle = 0 if toggle else 1
 
       time.sleep(0.5)
 
@@ -170,6 +175,7 @@ def thread_cam(event_object):
       cam = mycam.myCam()
     except:
       logger.warning("Exception on creating myCam...")
+      time.sleep(1)
 
     while True:
       if cam is None:
@@ -177,6 +183,7 @@ def thread_cam(event_object):
             cam = mycam.myCam()
         except:
             logger.warning("Exception on creating myCam...")
+            time.sleep(1)
       else:
         if modem.monitor["cellular_connection"]: # is internet ok ?!?
             while True:
@@ -185,7 +192,27 @@ def thread_cam(event_object):
       time.sleep(0.1)
 
 
+FAILSAFE_INIT = 1
+FAILSAFE_IDLE = 2
+failsafe_state = FAILSAFE_INIT
+
+def thread_failsafe(event_object):
+    global modem, client
+    logger.info("FAILSAFE thread started.")
+
+    while True:
+      if failsafe_state == FAILSAFE_INIT:
+         failsafe = FAILSAFE_IDLE
+      elif failsafe_state == FAILSAFE_IDLE:
+         pass
+      
+      time.sleep(0.5)
+
+
+
 def main():
+    rgpio.UserLedOff()
+
     Thread(target=thread_manage_connection, args=(event,)).start()
     #Thread(target=thread_monitor_and_config, args=(event,)).start()
     
@@ -203,6 +230,12 @@ def main():
     myCAM = Thread(target=thread_cam, args=(event,))
     myCAM.setName("thread_cam")
     myCAM.start()
+
+    # FailSafe thread
+    myFAILSAFE = Thread(target=thread_failsafe, args=(event,))
+    myFAILSAFE.setName("thread_failsafe")
+    myFAILSAFE.start()
+
 
 
 if __name__ == "__main__":

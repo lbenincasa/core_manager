@@ -19,6 +19,12 @@ if not pi.connected:
    print("Aborting: pigpio not connected!!")
    exit()
 
+#on SixFab user led is GPIO27
+USER_LED = 27
+pi.set_mode(USER_LED, pigpio.OUTPUT)
+
+USER_BUTTON = 22
+pi.set_mode(USER_LED, pigpio.INPUT)
 
 # Raspberry PI IP address
 #MQTT_BROKER = "172.30.55.106"
@@ -70,9 +76,15 @@ def publishBanks(client,topic=MQTT_PIGPIO_BANK):
 
 def publishData(client,topic=MQTT_PIGPIO):
     publishBanks(client,topic+"bank/")
-   
-   
 
+def UserLedOn():
+    pi.write(USER_LED, 1)
+
+def UserLedOff():
+    pi.write(USER_LED, 0)
+   
+def GetUserButton():
+    return pi.read(USER_BUTTON)
 
 
 if __name__ == "__main__":
