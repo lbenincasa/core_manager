@@ -4,6 +4,7 @@ import os.path
 import sys
 import logging
 import logging.handlers
+import helpers.mqtthandler as mqtthandler
 
 from helpers.config_parser import conf
 
@@ -23,6 +24,19 @@ def update_log_debug(logger_object, status):
     else:
         for handler in logger_object.handlers:
             if handler.get_name() == "debug_handler":
+                logger_object.removeHandler(handler)
+
+def update_log_mqtt(logger_object, client, status):
+    formatter = logging.Formatter(LOG_FORMAT)
+    mqtthdlr = mqtthandler.MQTTHandler(client=client)
+    mqtthdlr.setFormatter(formatter)
+    mqtthdlr.set_name("mqtt_handler")
+
+    if status is True:
+        logger_object.addHandler(mqtthdlr)
+    else:
+        for handler in logger_object.handlers:
+            if handler.get_name() == "mqtt_handler":
                 logger_object.removeHandler(handler)
 
 

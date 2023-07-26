@@ -3,7 +3,7 @@
 from threading import Thread, Lock, Event
 
 from helpers.config_parser import conf
-from helpers.logger import logger
+from helpers.logger import logger, update_log_mqtt
 from helpers.modem_support.default import BaseModule
 
 from cm import manage_connection, modem
@@ -158,6 +158,8 @@ def thread_mqtt(event_object):
         else:
             pass
         
+        update_log_mqtt(logger,client,True)
+
         while True:
             now = time_func()
             _now = struct.pack('>f', now)
@@ -170,6 +172,7 @@ def thread_mqtt(event_object):
 def thread_cam(event_object):
     global modem, client
     logger.info("CAM thread started.")
+    excpt_cnt = 0
 
     try:
       cam = mycam.myCam()
@@ -178,11 +181,13 @@ def thread_cam(event_object):
       time.sleep(1)
 
     while True:
-      if cam is None:
+      if 'cam' not in locals():
         try:
             cam = mycam.myCam()
         except:
-            logger.warning("Exception on creating myCam...")
+            excpt_cnt += 1
+            if (excpt_cnt < 5) or (excpt_cnt % 30 == 0):
+              logger.warning(f"Exception ({excpt_cnt}) on creating myCam...")
             time.sleep(1)
       else:
         if modem.monitor["cellular_connection"]: # is internet ok ?!?
