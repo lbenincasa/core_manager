@@ -36,7 +36,7 @@ class myCam(object):
       self.start = time.time()
       self.print_period = 2.0 #sec
       self.print_enabled = True
-      self.latency = [0.0,0.0]
+      self.latency = [[0.0],[0.0]]
       self.frame_diff = np.zeros((480, 640, 3), np.int16)
       self.quality = 50 #JPEG quality
       self.picam2 = Picamera2()
@@ -110,10 +110,10 @@ class myCam(object):
           bps = self.size / dt # bytes/sec
           pps = self.cnt / dt  # pkt/sec
 
-          _l1 = self.latency[0]*1000.0/2
-          _l2 = self.latency[1]*1000.0/2
+          _l1 = self.latency[0][0]*1000.0/2
+          _l2 = self.latency[1][0]*1000.0/2
 
-          print(int(dt),"sec, band:",int((bps/1024)*8),"[Kbit/s], pkt:", self.cnt, ", pkt size:", int(self.size/self.cnt), "[bytes], pkt per sec:", int(pps), "latency [ms]: " + str(int(_l2)) + " - " + str(int(_l1)))
+          print(int(dt),"sec, band:",int((bps/1024)*8),"[Kbit/s], pkt:", self.cnt, ", pkt size:", int(self.size/self.cnt), "[bytes], pkt per sec:", int(pps), "latency [ms]: " + str(int(_l1)) + "-" + str(int(_l2)))
           self.size = 0
           self.cnt = 0
 
@@ -131,13 +131,13 @@ class myCam(object):
     scale = .5
     thickness = 1
 
-    _l1 = self.latency[0]*1000.0/2
-    _l2 = self.latency[1]*1000.0/2
+    _l1 = self.latency[0][0]*1000.0/2
+    _l2 = self.latency[1][0]*1000.0/2
    
     with MappedArray(request, "main") as m:
       cv2.putText(m.array, timestamp, origin, font, scale, colour, thickness)
       cv2.putText(m.array, "MJPEG-"+str(self.quality), origin2, font, scale, colour, thickness)
-      cv2.putText(m.array, "latency [ms]: " + str(int(_l2)) + " - " + str(int(_l1)), origin3, font, scale, colour, thickness)
+      cv2.putText(m.array, "lat[ms]: " + str(int(_l1)) + "-" + str(int(_l2)), origin3, font, scale, colour, thickness)
       #cv2.putText(m.array, timestamp,(5, 30),cv2.FONT_HERSHEY_SIMPLEX,1,(0, 255, 255),1)
 
 class StreamingHandler(SimpleHTTPRequestHandler):

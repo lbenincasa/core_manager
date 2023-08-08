@@ -12,6 +12,55 @@ import psutil
 import json
 
 
+INPUT=0
+OUTPUT=1
+SERVO=2
+PWM=3
+
+USER_SERVO1 = 16
+USER_SERVO2 = 20
+USER_BUTTON = 22
+USER_LED = 27
+
+# configure these values
+
+# [GPIO, type] INPUT/OUTPUT/SERVO/PWM
+
+# Input
+# [GPIO, INPUT]
+
+# Output, value defaults to 0
+# [GPIO, OUTPUT <, value >]
+
+# Servo, value defaults to 1500, min to 1000, max to 2000
+# [GPIO, SERVO <, value <, min <, max > > >]
+
+# PWM, value defaults to 0, min to 0, max to 255
+# [GPIO, PWM <, value <, min <, max > > >]
+
+CONFIG = [
+##   [2, SERVO, 0, 1000, 2000],
+##   [3, SERVO],
+##   [3, INPUT],
+##   [4, INPUT],
+##   [5, OUTPUT, 0],
+##   [6, PWM, 0],
+##  [6, INPUT],
+##   [12, SERVO, 0, 1000, 2000],
+##   [13, SERVO],
+##   [14, INPUT],
+##   [15, OUTPUT, 1],
+##   [16, PWM, 128],
+   [USER_BUTTON, INPUT], #User button on SixFab
+##   [23, SERVO],
+##   [24, INPUT],
+##   [25, OUTPUT, 1],
+   [USER_SERVO1, SERVO, 1500,1000,2000], #sterzo
+   [USER_SERVO2, SERVO, 1000,1000,2000],    #throttle
+#   [26, PWM, 0,32,190],
+   [USER_LED, OUTPUT,0], #User led on SixFab
+]
+
 # connect to localhost pigpiod
 pi = pigpio.pi()
 
@@ -19,12 +68,6 @@ if not pi.connected:
    print("Aborting: pigpio not connected!!")
    exit()
 
-#on SixFab user led is GPIO27
-USER_LED = 27
-pi.set_mode(USER_LED, pigpio.OUTPUT)
-
-USER_BUTTON = 22
-pi.set_mode(USER_LED, pigpio.INPUT)
 
 # Raspberry PI IP address
 #MQTT_BROKER = "172.30.55.106"
@@ -86,6 +129,28 @@ def UserLedOff():
 def GetUserButton():
     return pi.read(USER_BUTTON)
 
+
+def onInit():
+    for G in CONFIG:
+        if G[1] == INPUT:
+            pi.set_mode(G[0], pigpio.INPUT)
+        elif G[1 ]== OUTPUT:
+            pi.set_mode(G[0], pigpio.OUTPUT)
+            pi.write(G[0],G[2])
+        elif G[1] == SERVO:
+            pi.set_servo_pulsewidth(G[0],G[2])
+        elif G[1] == PWM:
+            pi.set_PWM_dutycycle(G[0],G[2])
+
+def onFailSafe():
+    for G in CONFIG:
+        if G[1] == SERVO:
+            pi.set_servo_pulsewidth(G[0],G[2])
+        elif G[1] == PWM:
+            pi.set_PWM_dutycycle(G[0],G[2])
+
+
+onInit()
 
 if __name__ == "__main__":
 

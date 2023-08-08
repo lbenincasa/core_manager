@@ -32,16 +32,20 @@ event = Event()
 #modem = BaseModule() --> gia' dichiarata in cm.py
 
 client = mqtt.Client()
-latency  = [0.0,0.0]
+latency  = [
+    #latency,last,cnt,old,name
+    [0.0,[0],0,0,"latency0"],  # 0: ritardo tra device e broker MQTT
+    [0.0,[0],0,0,"latency1"],  # 1: ritardo tra device e app finale (con UI, anche attraverso broker MQTT)
+]
 
 #---------------------------------------------MQTT
 # Raspberry PI IP address
 #MQTT_BROKER = "172.30.55.106"
 #OLD MQTT_BROKER = "172.30.45.93"
 #MQTT_BROKER = "broker.emqx.io"
-#MQTT_BROKER = "192.168.100.100"
+MQTT_BROKER = "192.168.100.100"
 ## oracle-03
-MQTT_BROKER = "130.162.34.184"
+#MQTT_BROKER = "130.162.34.184"
 
 MQTT_PING = "rw/host/ping"
 MQTT_PONG = "rw/host/pong"
@@ -77,13 +81,24 @@ def on_disconnect(client, userdata, rc):
 def on_message(client, userdata, msg):
     global latency
 
-    if msg.topic == MQTT_PONG:
-       #_t = struct.unpack('>f',msg.payload)[0]
-       latency[0] = time_func() - float(msg.payload)
-    
+    # ritardo tra device e broker MQTT
     if msg.topic == MQTT_PING:
        #_t = struct.unpack('>f',msg.payload)[0]
-       latency[1] = time_func() - float(msg.payload)
+       latency[0][0] = time_func() - float(msg.payload)
+       latency[0][1].append(msg.payload)
+       if len(latency[0][1]) > 10:
+          latency[0][1].pop(0)
+       latency[0][2] += 1
+
+
+    # ritardo tra device e app finale (con UI, anche attraverso broker MQTT)
+    if msg.topic == MQTT_PONG:
+       #_t = struct.unpack('>f',msg.payload)[0]
+       latency[1][0] = time_func() - float(msg.payload)
+       latency[1][1].append(msg.payload)
+       if len(latency[1][1]) > 10:
+          latency[1][1].pop(0)
+       latency[1][2] += 1
     
     rgpio.onMessage(client, userdata, msg)
 
@@ -120,7 +135,6 @@ def thread_monitor_and_config(event_object):
 def thread_monitor(event_object):
     global modem, client
     logger.info("Monitor thread started.")
-    toggle = 0
 
     while True:
       if modem.monitor["cellular_connection"]: # is internet ok ?!?
@@ -128,11 +142,6 @@ def thread_monitor(event_object):
         #print(f"Quaternion: {imu.getSensors().quaternion}")
         imu.publishSensors(client)
         rgpio.publishData(client)
-        if toggle:
-            rgpio.UserLedOn()
-        else:
-            rgpio.UserLedOff()
-        toggle = 0 if toggle else 1
 
       time.sleep(0.5)
 
@@ -198,20 +207,56 @@ def thread_cam(event_object):
 
 
 FAILSAFE_INIT = 1
-FAILSAFE_IDLE = 2
+FAILSAFE_OFF  = 2
+FAILSAFE_ON   = 3
 failsafe_state = FAILSAFE_INIT
 
 def thread_failsafe(event_object):
-    global modem, client
+    global modem, client, failsafe_state,latency
     logger.info("FAILSAFE thread started.")
+    toggle = 0
+    cnt = 0
 
     while True:
       if failsafe_state == FAILSAFE_INIT:
-         failsafe = FAILSAFE_IDLE
-      elif failsafe_state == FAILSAFE_IDLE:
-         pass
+         failsafe_state = FAILSAFE_ON
+      elif failsafe_state == FAILSAFE_OFF:
+        #------------------------------------------------------------------- OFF.i
+        if not modem.monitor["cellular_connection"]: # is internet nok ?!?
+            failsafe_state = FAILSAFE_ON
+
+        if cnt >= 5:
+            if toggle: rgpio.UserLedOn()
+            else:      rgpio.UserLedOff()
+            toggle = 0 if toggle else 1
+            cnt = 0
+        cnt += 1
+
+        if latency[1][2] != latency[1][3]:
+            latency[1][3] = latency[1][2]
+        else:
+           failsafe_state = FAILSAFE_ON
+
+        #------------------------------------------------------------------- OFF.f
+      elif failsafe_state == FAILSAFE_ON:
+        #------------------------------------------------------------------- ON.i
+        cnt = 0
+        rgpio.onFailSafe()
+
+        if toggle: rgpio.UserLedOn()
+        else:      rgpio.UserLedOff()
+        toggle = 0 if toggle else 1
+
+        if modem.monitor["cellular_connection"]: # is internet nok ?!?
+            failsafe_state = FAILSAFE_OFF
+        
+        if latency[1][2] != latency[1][3]:
+            latency[1][3] = latency[1][2]
+            failsafe_state = FAILSAFE_OFF
+
+        #------------------------------------------------------------------- ON.f
       
-      time.sleep(0.5)
+      time.sleep(0.1)
 
 
 
