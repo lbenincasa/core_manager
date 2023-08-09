@@ -141,6 +141,8 @@ def onInit():
             pi.set_servo_pulsewidth(G[0],G[2])
         elif G[1] == PWM:
             pi.set_PWM_dutycycle(G[0],G[2])
+    UserLedOff()
+
 
 def onFailSafe():
     for G in CONFIG:

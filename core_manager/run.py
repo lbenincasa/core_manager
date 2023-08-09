@@ -37,6 +37,10 @@ latency  = [
     [0.0,[0],0,0,"latency0"],  # 0: ritardo tra device e broker MQTT
     [0.0,[0],0,0,"latency1"],  # 1: ritardo tra device e app finale (con UI, anche attraverso broker MQTT)
 ]
+failsafe = True
+failsafe_cnt = 0
+
+
 
 #---------------------------------------------MQTT
 # Raspberry PI IP address
@@ -100,7 +104,8 @@ def on_message(client, userdata, msg):
           latency[1][1].pop(0)
        latency[1][2] += 1
     
-    rgpio.onMessage(client, userdata, msg)
+    if not failsafe:
+        rgpio.onMessage(client, userdata, msg)
 
 
 def thread_manage_connection(event_object):
@@ -174,7 +179,8 @@ def thread_mqtt(event_object):
             _now = struct.pack('>f', now)
             client.publish(MQTT_PING, now)
 
-            time.sleep(0.1)
+            #ATTENZIONE: scegliere con cura questo periodo per non far intervenire la failsafe!
+            time.sleep(0.070)
 
       time.sleep(0.5)
 
@@ -206,24 +212,39 @@ def thread_cam(event_object):
       time.sleep(0.1)
 
 
-FAILSAFE_INIT = 1
-FAILSAFE_OFF  = 2
-FAILSAFE_ON   = 3
+FAILSAFE_INIT  = 1
+FAILSAFE_OFF   = 2
+FAILSAFE_ON    = 3
 failsafe_state = FAILSAFE_INIT
 
 def thread_failsafe(event_object):
-    global modem, client, failsafe_state,latency
+    global modem, client, failsafe_state,latency, failsafe
     logger.info("FAILSAFE thread started.")
     toggle = 0
     cnt = 0
 
+    def changeState(newState,info="-"):
+        global failsafe_cnt
+
+        if newState == FAILSAFE_ON:
+            failsafe_cnt += 1
+            logger.warning(f"FailSafe({failsafe_cnt})[{info}]: ON!")
+        elif newState == FAILSAFE_OFF:
+            failsafe_cnt += 1
+            logger.warning(f"FailSafe({failsafe_cnt})[{info}]: OFF")
+        
+        return newState
+
     while True:
       if failsafe_state == FAILSAFE_INIT:
+         latency[0][3] = latency[0][2]
+         latency[1][3] = latency[1][2]
+
          failsafe_state = FAILSAFE_ON
       elif failsafe_state == FAILSAFE_OFF:
         #------------------------------------------------------------------- OFF.i
-        if not modem.monitor["cellular_connection"]: # is internet nok ?!?
-            failsafe_state = FAILSAFE_ON
+        failsafe = False
+
 
         if cnt >= 5:
             if toggle: rgpio.UserLedOn()
@@ -232,36 +253,57 @@ def thread_failsafe(event_object):
             cnt = 0
         cnt += 1
 
-        if latency[1][2] != latency[1][3]:
-            latency[1][3] = latency[1][2]
-        else:
-           failsafe_state = FAILSAFE_ON
+        if not modem.monitor["cellular_connection"]: # is internet nok ?!?
+            failsafe_state = changeState(FAILSAFE_ON,"internet down")
+
+        # cnt ping(device <-> broker mqtt): si muove oppure current == old (fermo) ?
+        if latency[0][2] == latency[0][3]: #fermo ?
+            failsafe_state = changeState(FAILSAFE_ON,"ping fault")
+
+        # cnt pong(device <-> final app): si muove oppure current == old (fermo) ?
+        if latency[1][2] == latency[1][3]: #fermo ?
+            failsafe_state = changeState(FAILSAFE_ON,"pong fault")
+
+        #old = current
+        latency[0][3] = latency[0][2]
+        latency[1][3] = latency[1][2]
 
         #------------------------------------------------------------------- OFF.f
       elif failsafe_state == FAILSAFE_ON:
         #------------------------------------------------------------------- ON.i
         cnt = 0
         rgpio.onFailSafe()
+        failsafe = True
 
         if toggle: rgpio.UserLedOn()
         else:      rgpio.UserLedOff()
         toggle = 0 if toggle else 1
 
-        if modem.monitor["cellular_connection"]: # is internet nok ?!?
-            failsafe_state = FAILSAFE_OFF
-        
-        if latency[1][2] != latency[1][3]:
-            latency[1][3] = latency[1][2]
-            failsafe_state = FAILSAFE_OFF
+        if modem.monitor["cellular_connection"]: # is internet ok ?!?
+            # cnt ping ricevuti: si muove (current != old) ?
+            if latency[0][2] != latency[0][3]: #si muove ?
+                # cnt pong ricevuti: si muove (current != old) ?
+                if latency[1][2] != latency[1][3]: #si muove ?
+                    failsafe_state = changeState(FAILSAFE_OFF)
+
+        #old = current
+        latency[0][3] = latency[0][2]
+        latency[1][3] = latency[1][2]
 
         #------------------------------------------------------------------- ON.f
-      
-      time.sleep(0.1)
+      #ATTENZIONE: scegliere con cura questo periodo per non far intervenire la failsafe!
+      time.sleep(0.150)
 
 
 
 def main():
     rgpio.UserLedOff()
+
+    # FailSafe thread
+    myFailSafe = Thread(target=thread_failsafe, args=(event,))
+    myFailSafe.setName("thread_failsafe")
+    myFailSafe.start()
+
 
     Thread(target=thread_manage_connection, args=(event,)).start()
     #Thread(target=thread_monitor_and_config, args=(event,)).start()
@@ -281,10 +323,6 @@ def main():
     myCAM.setName("thread_cam")
     myCAM.start()
 
-    # FailSafe thread
-    myFAILSAFE = Thread(target=thread_failsafe, args=(event,))
-    myFAILSAFE.setName("thread_failsafe")
-    myFAILSAFE.start()
 
 
 
