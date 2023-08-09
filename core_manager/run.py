@@ -16,6 +16,7 @@ from geolocation import update_geolocation
 import modules.imu as imu
 import modules.remote_gpio as rgpio
 import modules.cam as mycam
+import modules.fanhat as fan
 
 import paho.mqtt.client as mqtt
 import time
@@ -293,7 +294,7 @@ def thread_failsafe(event_object):
         #------------------------------------------------------------------- ON.f
       #ATTENZIONE: scegliere con cura questo periodo per non far intervenire la failsafe!
       time.sleep(0.150)
-
+      fan.temp_check()
 
 
 def main():
