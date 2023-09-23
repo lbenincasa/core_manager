@@ -48,9 +48,9 @@ failsafe_cnt = 0
 #MQTT_BROKER = "172.30.55.106"
 #OLD MQTT_BROKER = "172.30.45.93"
 #MQTT_BROKER = "broker.emqx.io"
-MQTT_BROKER = "192.168.100.100"
+#MQTT_BROKER = "192.168.100.100"
 ## oracle-03
-#MQTT_BROKER = "130.162.34.184"
+MQTT_BROKER = "130.162.34.184"
 
 MQTT_PING = "rw/host/ping"
 MQTT_PONG = "rw/host/pong"
@@ -89,9 +89,10 @@ def on_message(client, userdata, msg):
     # ritardo tra device e broker MQTT
     if msg.topic == MQTT_PING:
        #_t = struct.unpack('>f',msg.payload)[0]
-       latency[0][0] = time_func() - float(msg.payload)
-       latency[0][1].append(msg.payload)
-       if len(latency[0][1]) > 10:
+       _now = time_func()
+       latency[0][0] = _now - float(msg.payload)
+       latency[0][1].append(_now)
+       if len(latency[0][1]) > 6:
           latency[0][1].pop(0)
        latency[0][2] += 1
 
@@ -99,9 +100,10 @@ def on_message(client, userdata, msg):
     # ritardo tra device e app finale (con UI, anche attraverso broker MQTT)
     if msg.topic == MQTT_PONG:
        #_t = struct.unpack('>f',msg.payload)[0]
-       latency[1][0] = time_func() - float(msg.payload)
-       latency[1][1].append(msg.payload)
-       if len(latency[1][1]) > 10:
+       _now = time_func()
+       latency[1][0] = _now - float(msg.payload)
+       latency[1][1].append(_now)
+       if len(latency[1][1]) > 6:
           latency[1][1].pop(0)
        latency[1][2] += 1
     
@@ -181,7 +183,7 @@ def thread_mqtt(event_object):
             client.publish(MQTT_PING, now)
 
             #ATTENZIONE: scegliere con cura questo periodo per non far intervenire la failsafe!
-            time.sleep(0.070)
+            time.sleep(0.050)
 
       time.sleep(0.5)
 
@@ -236,6 +238,12 @@ def thread_failsafe(event_object):
         
         return newState
 
+    def moving_avg(x, n):
+        if len(x) < n or n <= 0:
+           return 0
+        
+        return sum(x[-n:])/n
+
     while True:
       if failsafe_state == FAILSAFE_INIT:
          latency[0][3] = latency[0][2]
@@ -257,13 +265,20 @@ def thread_failsafe(event_object):
         if not modem.monitor["cellular_connection"]: # is internet nok ?!?
             failsafe_state = changeState(FAILSAFE_ON,"internet down")
 
+        _now = time_func()
         # cnt ping(device <-> broker mqtt): si muove oppure current == old (fermo) ?
-        if latency[0][2] == latency[0][3]: #fermo ?
-            failsafe_state = changeState(FAILSAFE_ON,"ping fault")
+        #if latency[0][2] == latency[0][3]: #fermo ?
+        _delta1 = _now - moving_avg(latency[0][1],5)
+        if _delta1 > 0.220:
+           _info = f"ping fault. d1:{_delta1}"
+           failsafe_state = changeState(FAILSAFE_ON,_info)
 
         # cnt pong(device <-> final app): si muove oppure current == old (fermo) ?
-        if latency[1][2] == latency[1][3]: #fermo ?
-            failsafe_state = changeState(FAILSAFE_ON,"pong fault")
+        #if latency[1][2] == latency[1][3]: #fermo ?
+        _delta2 = _now - moving_avg(latency[1][1],4)
+        if _delta2 > 0.280:
+           _info = f"pong fault. d2:{_delta2}"
+           failsafe_state = changeState(FAILSAFE_ON,_info)
 
         #old = current
         latency[0][3] = latency[0][2]
@@ -281,11 +296,17 @@ def thread_failsafe(event_object):
         toggle = 0 if toggle else 1
 
         if modem.monitor["cellular_connection"]: # is internet ok ?!?
+            _now = time_func()
             # cnt ping ricevuti: si muove (current != old) ?
-            if latency[0][2] != latency[0][3]: #si muove ?
+            #if latency[0][2] != latency[0][3]: #si muove ?
+            _delta1 = _now - moving_avg(latency[0][1],3)
+            if _delta1 < 0.070: #70ms
                 # cnt pong ricevuti: si muove (current != old) ?
-                if latency[1][2] != latency[1][3]: #si muove ?
-                    failsafe_state = changeState(FAILSAFE_OFF)
+                #if latency[1][2] != latency[1][3]: #si muove ?
+                _delta2 = _now - moving_avg(latency[1][1],3)
+                if _delta2 < 0.150: #150ms
+                    _info = f"d1:{_delta1},d2:{_delta2}"
+                    failsafe_state = changeState(FAILSAFE_OFF,_info)
 
         #old = current
         latency[0][3] = latency[0][2]

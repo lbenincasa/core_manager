@@ -34,6 +34,11 @@ class BaseModule:
     eps_mode_status_command = ""
     eps_mode_setter_command = ""
     eps_data_centric_response = ""
+    gps_reset_command = ""
+    gps_setnmea_command = ""
+    gps_setrate_command = ""
+    gps_start_command = ""
+
 
     # Module runtime memory
     incident_flag = False
@@ -207,6 +212,25 @@ class BaseModule:
             raise PDPContextFailed("ECM initiation timeout!")
         else:
             raise PDPContextFailed("ECM initiation failed!")
+
+    def initiate_gps(self):
+        logger.info("Checking the GPS initialization...")
+        output = send_at_com(self.gps_reset_command, "OK")
+        if output[2] == 0:
+            logger.info("GPS reset command ok...") 
+
+        output = send_at_com(self.gps_setnmea_command, "OK")
+        if output[2] == 0:
+            logger.info("GPS set NMEA config command ok...") 
+
+        output = send_at_com(self.gps_setrate_command, "OK")
+        if output[2] == 0:
+            logger.info("GPS set NMEA rate command ok...") 
+
+        output = send_at_com(self.gps_start_command, "OK")
+        if output[2] == 0:
+            logger.info("GPS start NMEA sentences ok...") 
+
 
     def check_interface_health(self, interface, timeout):
         output = shell_command(f"ping -q -c 1 -s 8 -w {timeout} -I {interface} 8.8.8.8")

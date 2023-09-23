@@ -25,6 +25,11 @@ class Telit(BaseModule):
     eps_mode_status_command="AT+CEMODE?"
     eps_mode_setter_command="AT+CEMODE=2"
     eps_data_centric_response="2"
+    gps_reset_command = "AT$GPSRST"
+    gps_setnmea_command = "AT$GPSNMUN=2,1,1,1,1,1,1"
+    gps_setrate_command = "AT$GPSNHZ=2"
+    gps_start_command = "AT$GPSP=1"
+
 
     radio_type_table = {
         0 : "gsm",

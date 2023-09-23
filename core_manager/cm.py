@@ -182,7 +182,8 @@ def _initiate_ecm():
     queue.set_step(
         sub="organizer",
         base="initiate_ecm",
-        success="check_internet_base",
+#        success="check_internet_base",
+        success="initiate_gps",
         fail="diagnose_repeated",
         wait=NO_WAIT_INTERVAL,
         interval=0.1,
@@ -197,6 +198,27 @@ def _initiate_ecm():
         queue.is_ok = False
     else:
         queue.is_ok = True
+
+def _initiate_gps():
+    queue.set_step(
+        sub="organizer",
+        base="initiate_ecm",
+        success="check_internet_base",
+        fail="diagnose_repeated",
+        wait=NO_WAIT_INTERVAL,
+        interval=0.1,
+        is_ok=False,
+        retry=5,
+    )
+
+    try:
+        modem.initiate_gps()
+    except Exception as error:
+        logger.error("initiate_gps() -> %s", error)
+        queue.is_ok = False
+    else:
+        queue.is_ok = True
+
 
 
 def _check_internet():
@@ -489,6 +511,7 @@ steps = {
     "reset_modem_softly": _reset_modem_softly,  # 11
     "reset_modem_hardly": _reset_modem_hardly,  # 12
     "check_internet_init": _check_internet_init,  # 0.5
+    "initiate_gps": _initiate_gps,  # 4.5
 }
 
 
