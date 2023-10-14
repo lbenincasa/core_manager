@@ -6,12 +6,15 @@ import board
 import paho.mqtt.client as mqtt
 import json
 import adafruit_bno055
+import platform
 
 
 i2c = board.I2C()  # uses board.SCL and board.SDA
 # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
 sensors = adafruit_bno055.BNO055_I2C(i2c)
-MQTT_SENSOR_IMU = "rw/host/sensors/imu/"
+#MQTT_SENSOR_IMU = "rw/host/sensors/imu/"
+MQTT_SENSOR_IMU = f"rw/{platform.node()}/sensors/imu/"
+
 
 # If you are going to use UART uncomment these lines
 # uart = board.UART()
@@ -47,7 +50,6 @@ def printSensors():
 #    )  # Uncomment if using a Raspberry Pi
 #    """
     acc = sensors.acceleration
-    #client.publish(MQTT_SENSOR_ACC, json.dumps(acc))
 #    print("Accelerometer (m/s^2): {}".format(sensor.acceleration))
     print(f"Accelerometer (m/s^2): {acc}")
     print(f"Magnetometer (microteslas): {sensors.magnetic}")
@@ -69,9 +71,6 @@ def getSensors():
 #MQTT_BROKER = "192.168.100.100"
 ## oracle-03
 MQTT_BROKER = "130.162.34.184"
-
-# Topic on which frame will be published
-MQTT_SENSOR_ACC = "rw/host/monitor/acc"
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):

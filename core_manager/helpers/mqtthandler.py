@@ -3,8 +3,11 @@
 import logging
 import paho.mqtt.client as mqttc
 import ssl
+import platform
 
-MQTT_LOG = "rw/host/log"
+
+#MQTT_LOG = "rw/host/log"
+MQTT_LOG = f"rw/{platform.node()}/log"
 
 class MQTTHandler(logging.Handler):
   def __init__(

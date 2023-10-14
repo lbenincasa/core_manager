@@ -10,6 +10,7 @@ import struct
 import sys
 import psutil
 import json
+import platform
 
 
 INPUT=0
@@ -20,6 +21,8 @@ PWM=3
 USER_SERVO1 = 16
 USER_SERVO2 = 20
 USER_BUTTON = 22
+USER_DISPLAY_RESET = 23
+
 USER_LED = 27
 
 # configure these values
@@ -52,6 +55,7 @@ CONFIG = [
 ##   [15, OUTPUT, 1],
 ##   [16, PWM, 128],
    [USER_BUTTON, INPUT], #User button on SixFab
+   [USER_DISPLAY_RESET, OUTPUT,1], #Oled display pin --> 1 = VDD (normal operation)
 ##   [23, SERVO],
 ##   [24, INPUT],
 ##   [25, OUTPUT, 1],
@@ -78,11 +82,10 @@ if not pi.connected:
 MQTT_BROKER = "130.162.34.184"
 
 # Topic on which frame will be published
-MQTT_PIGPIO = "rw/host/pigpio/"
+#MQTT_PIGPIO = "rw/host/pigpio/"
+MQTT_PIGPIO = f"rw/{platform.node()}/pigpio/"
 MQTT_PIGPIO_BANK = MQTT_PIGPIO + "bank/"
 MQTT_PIGPIO_CMD  = MQTT_PIGPIO + "cmd"
-#MQTT_PONG = "rw/host/pong"
-#MQTT_PING = "rw/host/ping"
 
 # The callback for when the client receives a CONNACK response from the server.
 def onConnect(client, userdata, flags, rc):

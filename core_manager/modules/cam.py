@@ -11,6 +11,7 @@ import libstreamvbyte as svb
 import lz4.frame as lz
 import rle
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import platform
 
 
 class myCam(object):
@@ -27,8 +28,11 @@ class myCam(object):
   #MQTT_BROKER = "130.162.34.184"
 
   # Topic on which frame will be published
-  MQTT_VIDEO_MJPEG  = "rw/host/video/mjpeg"
-  MQTT_VIDEO_MJPEGD = "rw/host/video/mjpegd"
+  platform.node()
+#  MQTT_VIDEO_MJPEG  = "rw/host/video/mjpeg"
+#  MQTT_VIDEO_MJPEGD = "rw/host/video/mjpegd"
+  MQTT_VIDEO_MJPEG  = f"rw/{platform.node()}/video/mjpeg"
+  MQTT_VIDEO_MJPEGD = f"rw/{platform.node()}/video/mjpegd"
 
   def __init__(self):
       self.cnt = 0
