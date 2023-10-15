@@ -25,10 +25,23 @@ class Telit(BaseModule):
     eps_mode_status_command="AT+CEMODE?"
     eps_mode_setter_command="AT+CEMODE=2"
     eps_data_centric_response="2"
+
+    #A-GPS mode
+    gps_reset_module_command = "AT$GPSR=0"
+    gps_supl_version_command = "AT$SUPLV=2"
+    gps_qos_command = "AT$GPSQOS=50,50,150,0"
+    gps_slp_addr_command = 'AT$LCSSLP=1,"supl.google.com",7276'
+    gps_terminal_info_command = "AT$LCSTER=1,,,0"
+    gps_lock_lcs_command = "AT$LCSLK=1,1"
+    gps_context_act_command = "AT#SGACT=1,1"
+    gps_start_agps_command = "AT$GPSSLSR=1,1,,,,,1"
+    gps_acquired_pos_command = "AT$GPSACP"
+
+    #standalone mode
     gps_reset_command = "AT$GPSRST"
     gps_setnmea_command = "AT$GPSNMUN=2,1,1,1,1,1,1"
-    gps_setrate_command = "AT$GPSNHZ=2"
-    gps_start_command = "AT$GPSP=1"
+    gps_setrate_command = "AT$GPSNHZ=1" # 0 = 1hz, 1 = 2hz, 2 = 5hz, 3 = 10hz
+    gps_powerup_command = "AT$GPSP=1"
 
 
     radio_type_table = {

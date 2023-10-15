@@ -34,11 +34,21 @@ class BaseModule:
     eps_mode_status_command = ""
     eps_mode_setter_command = ""
     eps_data_centric_response = ""
+    #GPS: standalone mode
     gps_reset_command = ""
     gps_setnmea_command = ""
     gps_setrate_command = ""
-    gps_start_command = ""
-
+    gps_powerup_command = ""
+    #GPS: A-GPS mode
+    gps_reset_module_command = ""
+    gps_supl_version_command = ""
+    gps_qos_command = ""
+    gps_slp_addr_command = ''
+    gps_terminal_info_command = ""
+    gps_lock_lcs_command = ""
+    gps_context_act_command = ""
+    gps_start_agps_command = ""
+    gps_acquired_pos_command = ""
 
     # Module runtime memory
     incident_flag = False
@@ -215,21 +225,107 @@ class BaseModule:
 
     def initiate_gps(self):
         logger.info("Checking the GPS initialization...")
-        output = send_at_com(self.gps_reset_command, "OK")
-        if output[2] == 0:
-            logger.info("GPS reset command ok...") 
+        mode = 0 # 0 = standalone mode, 1 = A-GPS mode
 
-        output = send_at_com(self.gps_setnmea_command, "OK")
-        if output[2] == 0:
-            logger.info("GPS set NMEA config command ok...") 
+        if (mode == 0): ###################################### Standalone mode
+            logger.info("GPS: standalone mode")
 
-        output = send_at_com(self.gps_setrate_command, "OK")
-        if output[2] == 0:
-            logger.info("GPS set NMEA rate command ok...") 
+            output = send_at_com(self.gps_reset_command, "OK")
+            if output[2] == 0:
+                logger.info("GPS reset command ok...") 
+            else:
+                logger.warning("GPS reset command error...") 
 
-        output = send_at_com(self.gps_start_command, "OK")
-        if output[2] == 0:
-            logger.info("GPS start NMEA sentences ok...") 
+            output = send_at_com(self.gps_setnmea_command, "OK")
+            if output[2] == 0:
+                logger.info("GPS set NMEA config command ok...") 
+            else:
+                logger.warning("GPS set NMEA config command error...") 
+
+            output = send_at_com(self.gps_setrate_command, "OK")
+            if output[2] == 0:
+                logger.info("GPS set NMEA rate command ok...") 
+            else:
+                logger.warning("GPS set NMEA rate command error...") 
+
+            output = send_at_com(self.gps_powerup_command, "OK")
+            if output[2] == 0:
+                logger.info("GPS power up command ok...")
+            else:
+                logger.warning("GPS power up command error...")
+    
+        elif (mode == 1): ###################################### A-GPS mode
+            logger.info("GPS: A-GPS mode.")
+
+            output = send_at_com(self.gps_reset_command, "OK")
+            if output[2] == 0:
+                logger.info("GPS reset command ok...") 
+            else:
+                logger.warning("GPS reset command error...") 
+
+            output = send_at_com(self.gps_reset_module_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: reset module command ok...")
+            else:
+                logger.warning("A-GPS: reset module command error...")
+
+            output = send_at_com(self.gps_supl_version_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: set SUPL version command ok...")
+            else:
+                logger.warning("A-GPS: set SUPL version command error...")
+
+            output = send_at_com(self.gps_qos_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: set QOS command ok...")
+            else:
+                logger.info("A-GPS: set QOS command error...")
+
+            output = send_at_com(self.gps_slp_addr_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: set SLP address command ok...")
+            else:
+                logger.warning("A-GPS: set SLP address command error...")
+
+            output = send_at_com(self.gps_terminal_info_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: set terminal info command ok...")
+            else:
+                logger.warning("A-GPS: set terminal info command error...")
+
+            output = send_at_com(self.gps_lock_lcs_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: set lock lcs command ok...")
+            else:
+                logger.warning("A-GPS: set lock lcs command error...")
+
+#            output = send_at_com(self.gps_context_act_command, "OK")
+#            if output[2] == 0:
+#                logger.info("A-GPS: set lock lcs command ok...")
+
+            output = send_at_com(self.gps_start_agps_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: set start A-GPS command ok...")
+            else:
+                logger.warning("A-GPS: set start A-GPS command error...")
+
+            output = send_at_com(self.gps_setnmea_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: set NMEA config command ok...") 
+            else:
+                logger.warning("A-GPS: set NMEA config command error...") 
+
+            output = send_at_com(self.gps_setrate_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: set NMEA rate command ok...") 
+            else:
+                logger.warning("A-GPS: set NMEA rate command error...") 
+
+            output = send_at_com(self.gps_powerup_command, "OK")
+            if output[2] == 0:
+                logger.info("A-GPS: power up command ok...") 
+            else:
+                logger.warning("A-GPS: power up command error...") 
 
 
     def check_interface_health(self, interface, timeout):
