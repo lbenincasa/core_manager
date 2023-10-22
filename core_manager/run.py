@@ -14,6 +14,7 @@ from geolocation import update_geolocation
 
 #from modules.imu import sensor
 import modules.imu as imu
+import modules.gps as gps
 import modules.remote_gpio as rgpio
 import modules.cam as mycam
 import modules.fanhat as fan
@@ -22,6 +23,7 @@ import paho.mqtt.client as mqtt
 import time
 import struct
 import platform
+import json
 
 try:# Use monotonic clock if available
     ## Beni, disabilitata per il momento: time_func = time.monotonic
@@ -43,7 +45,6 @@ failsafe = True
 failsafe_cnt = 0
 
 
-
 #---------------------------------------------MQTT
 # Raspberry PI IP address
 #MQTT_BROKER = "172.30.55.106"
@@ -58,6 +59,9 @@ MQTT_BROKER = "130.162.34.184"
 hostname = platform.node()
 MQTT_PING = f"rw/{hostname}/ping"
 MQTT_PONG = f"rw/{hostname}/pong"
+MQTT_INFO = f"rw/{hostname}/info"
+
+info = {'latency':latency}
 
 # The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
@@ -100,6 +104,8 @@ def on_message(client, userdata, msg):
           latency[0][1].pop(0)
        latency[0][2] += 1
 
+       info['latency'] = latency
+
 
     # ritardo tra device e app finale (con UI, anche attraverso broker MQTT)
     if msg.topic == MQTT_PONG:
@@ -110,9 +116,17 @@ def on_message(client, userdata, msg):
        if len(latency[1][1]) > 6:
           latency[1][1].pop(0)
        latency[1][2] += 1
-    
+
+       info['latency'] = latency
+
     if not failsafe:
         rgpio.onMessage(client, userdata, msg)
+
+def publishData(client,topic=MQTT_INFO):
+    if ('latency' in info):
+        client.publish(topic+"/latency", json.dumps(info['latency']))
+    #client.publish(topic+"/latency", json.dumps("'ciao':5"]))
+    pass
 
 
 def thread_manage_connection(event_object):
@@ -154,6 +168,11 @@ def thread_monitor(event_object):
         #print(f"Quaternion: {imu.getSensors().quaternion}")
         imu.publishSensors(client)
         rgpio.publishData(client)
+        gps.publishSensors(client)
+        fan.publishSensors(client)
+
+        publishData(client)
+        #client.publish(MQTT_INFO+"/latency", json.dumps(info['latency']))
 
       time.sleep(0.5)
 
@@ -348,6 +367,9 @@ def main():
     myCAM = Thread(target=thread_cam, args=(event,))
     myCAM.setName("thread_cam")
     myCAM.start()
+
+    # start GPS
+    gps.main()
 
 
 

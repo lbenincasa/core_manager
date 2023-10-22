@@ -3,6 +3,47 @@ import RPi.GPIO as GPIO
 import os
 import time
 from threading import Thread
+import platform
+import paho.mqtt.client as mqtt
+import json
+
+
+
+MQTT_SENSOR_FANHAT = f"rw/{platform.node()}/sensors/fanhat"
+info = {}
+sensors = {'temp':-1.0, 'info':info}
+
+
+def publishSensors(client,topic=MQTT_SENSOR_FANHAT):
+    client.publish(topic+"/temp", json.dumps(sensors['temp']))
+    client.publish(topic+"/info", json.dumps(sensors['info']))
+
+def printSensors():
+    print(sensors)
+
+#---------------------------------------------MQTT
+# Raspberry PI IP address
+#MQTT_BROKER = "172.30.55.106"
+#OLD MQTT_BROKER = "172.30.45.93"
+#MQTT_BROKER = "broker.emqx.io"
+#MQTT_BROKER = "192.168.100.100"
+## oracle-03
+MQTT_BROKER = "130.162.34.184"
+
+# The callback for when the client receives a CONNACK response from the server.
+def on_connect(client, userdata, flags, rc):
+    print(f"Connected to broker '{client._host}' with result code {str(rc)}")
+
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+    #client.subscribe(MQTT_CMD)
+    #client.subscribe(MQTT_PONG)
+    #client.subscribe(MQTT_PING)
+
+
+# The callback for when a PUBLISH message is received from the server.
+def on_message(client, userdata, msg):
+   pass
 
 
 rev = GPIO.RPI_REVISION
@@ -75,12 +116,18 @@ def temp_check():
 		temp = tempfp.readline()
 		tempfp.close()
 		val = float(int(temp)/1000)
+		sensors['temp'] = val
 	except IOError:
 		val = 0
 	
 	speed = get_fanspeed(val, fanconfig)
+	info['speed_tgt'] = speed
+
 	if speed == 0:
 		speed = speed_min
+
+	info['speed'] = speed
+	#info['config'] = fanconfig
 
 	try:
 		bus.write_byte(address,speed)
@@ -88,16 +135,18 @@ def temp_check():
 		pass
 
 
-def main():
-	while True:
-		temp_check()
-
-		time.sleep(1)
-
-
 if __name__ == "__main__":
-    try:
-        t2 = Thread(target = main)
-        t2.start()
-    except:
-        t2.stop()
+    client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+    client.connect(MQTT_BROKER)
+
+    # Starting thread which will receive the frames
+    client.loop_start()
+
+    while True:
+      temp_check()
+      printSensors()
+      publishSensors(client)
+
+      time.sleep(1)

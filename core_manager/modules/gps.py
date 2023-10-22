@@ -16,7 +16,7 @@ except AttributeError:
 
 
 
-MQTT_SENSOR_GPS = f"rw/{platform.node()}/sensors/gps/"
+MQTT_SENSOR_GPS = f"rw/{platform.node()}/sensors/gps"
 
 ser = serial.Serial('/dev/ttyUSB1', 115200, timeout=5.0)
 sio = io.TextIOWrapper(io.BufferedRWPair(ser, ser))
@@ -28,14 +28,8 @@ sensors = {'position':position, 'info':info}
 
 
 def publishSensors(client,topic=MQTT_SENSOR_GPS):
-    client.publish(topic+"position", json.dumps(sensors['position']))
-    client.publish(topic+"info", json.dumps(sensors['info']))
-#    client.publish(topic+"gyro", json.dumps(sensors.gyro))
-#    client.publish(topic+"euler", json.dumps(sensors.euler))
-#    client.publish(topic+"quaternion", json.dumps(sensors.quaternion))
-#    client.publish(topic+"linear_acceleration", json.dumps(sensors.linear_acceleration))
-#    client.publish(topic+"gravity", json.dumps(sensors.gravity))
-    pass
+    client.publish(topic+"/position", json.dumps(sensors['position']))
+    client.publish(topic+"/info", json.dumps(sensors['info']))
 
 
 def printSensors():
@@ -77,6 +71,8 @@ def thread_gps():
     _now = time_func()
     _old = _now
     _cnt = 0
+
+    position['num_sats_in_view'] = -1
 
     while 1:
         try:
@@ -141,8 +137,10 @@ def thread_gps():
     #                position['spkn'] = 0.0 #msg.spd_over_grnd_kts
 
                 elif msg.sentence_type == 'GSV':
-                    position['num_sats_in_view'] = int(msg.num_sv_in_view)
+                    pass
 
+            if sdata[0] == "$GPGSV":
+                position['num_sats_in_view'] = int(sdata[3])
             #sensors[msg.sentence_type] = msg
             info['delta'] = delta
             info['cnt'] = _cnt
@@ -156,7 +154,9 @@ def thread_gps():
         except ValueError as e:
             print(f'Parse error: {e}')
             continue
-        #time.sleep(0.1)
+        
+#        time.sleep(0.1)
+#        ser.flushInput()
 
 def main():
     # Serial NMEA sentences thread
@@ -176,6 +176,6 @@ if __name__ == "__main__":
 
     while True:
         if 1:  
-            #printSensors()
+            printSensors()
             publishSensors(client)
             time.sleep(0.5)
